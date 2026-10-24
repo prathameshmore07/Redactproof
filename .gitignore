@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+*.whl
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Model caches
+.ollama/
+models/
+
+# Benchmark generated data (regenerable from seeds)
+bench/datasets/generated/
+bench/results/*.md
+
+# Sanitized output files
+*.sanitized.png
+*.sanitized.jpg
+
+# Audit reports (generated at runtime)
+*.report.json

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redactproof Review</title>
+  <meta name="description" content="Local-only privacy review interface for Redactproof screenshot sanitizer">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar-left">Redactproof</div>
+    <div class="topbar-center">
+      <span id="policy-name">--</span>
+      <span>|</span>
+      <span id="model-name">--</span>
+    </div>
+    <div class="topbar-right">Loading...</div>
+  </header>
+
+  <!-- Main layout -->
+  <div class="main">
+    <!-- Canvas pane -->
+    <div class="canvas-pane">
+      <div class="canvas-toolbar">
+        <div class="toggle-group">
+          <button id="btn-original" class="toggle-btn active">Original</button>
+          <button id="btn-preview" class="toggle-btn">Preview</button>
+        </div>
+        <div class="toolbar-sep"></div>
+        <button id="btn-zoom-in" class="toolbar-btn" title="Zoom in">
+          <svg viewBox="0 0 16 16"><line x1="8" y1="4" x2="8" y2="12"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
+        </button>
+        <button id="btn-zoom-out" class="toolbar-btn" title="Zoom out">
+          <svg viewBox="0 0 16 16"><line x1="4" y1="8" x2="12" y2="8"/></svg>
+        </button>
+        <button id="btn-zoom-fit" class="toolbar-btn" title="Fit to viewport (Z)">
+          <svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>
+        </button>
+        <div class="toolbar-sep"></div>
+        <button id="btn-undo" class="toolbar-btn" title="Undo (Cmd+Z)">
+          <svg viewBox="0 0 16 16"><path d="M4 7h7a3 3 0 0 1 0 6H9"/><polyline points="7 4 4 7 7 10"/></svg>
+        </button>
+        <button id="btn-redo" class="toolbar-btn" title="Redo (Cmd+Shift+Z)">
+          <svg viewBox="0 0 16 16"><path d="M12 7H5a3 3 0 0 0 0 6h2"/><polyline points="9 4 12 7 9 10"/></svg>
+        </button>
+      </div>
+      <div class="canvas-viewport">
+        <div class="canvas-container">
+          <img id="canvas-img" alt="Screenshot under review" draggable="false">
+          <div id="mask-layer"></div>
+          <div id="overlay-layer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <aside class="panel">
+      <div class="panel-header">
+        <h2>Findings</h2>
+        <span class="count"></span>
+      </div>
+      <div class="panel-notice">J/K navigate, A accept redaction, R reject, Space toggle view</div>
+      <div class="findings-list">
+        <div class="state-message">Loading findings...</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Bottom bar -->
+  <footer class="bottombar">
+    <div class="status-counts">
+      <span class="count-redact">0 redact</span>
+      <span class="count-review">0 need review</span>
+      <span class="count-keep">0 keep</span>
+    </div>
+    <button id="btn-export" class="export-btn" disabled title="Resolve all reviews before export">Export Sanitized</button>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

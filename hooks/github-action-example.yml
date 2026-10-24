@@ -1,0 +1,40 @@
+name: Redactproof Screenshot Privacy Gate
+
+on:
+  pull_request:
+    paths:
+      - '**.png'
+      - '**.jpg'
+      - '**.jpeg'
+
+jobs:
+  check-screenshots:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Redactproof
+        run: |
+          pip install .
+
+      - name: Find added or modified images
+        id: files
+        run: |
+          git diff --name-only --diff-filter=AM HEAD~1 HEAD | grep -E '\.(png|jpg|jpeg)$' > changed_images.txt || true
+          echo "IMAGE_COUNT=$(wc -l < changed_images.txt)" >> $GITHUB_ENV
+
+      - name: Scan Screenshots with Redactproof (Air-Gapped / Network Blocked)
+        if: env.IMAGE_COUNT > 0
+        run: |
+          while IFS= read -r img; do
+            echo "Scanning $img under public policy..."
+            redactproof check "$img" --policy public --runtime mock
+          done < changed_images.txt

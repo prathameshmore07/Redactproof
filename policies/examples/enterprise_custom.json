@@ -1,0 +1,27 @@
+{
+  "policy": "enterprise_custom",
+  "version": 1,
+  "default_action": "review",
+  "rules": [
+    { "category": "credential",          "action": "redact" },
+    { "category": "personal_identity",   "action": "pseudonymize" },
+    { "category": "customer_identity",   "action": "pseudonymize" },
+    { "category": "internal_hostname",   "action": "redact" },
+    { "category": "local_path_user",     "action": "redact" },
+    { "category": "face_or_avatar",      "action": "redact" },
+    { "category": "qr_or_barcode",       "action": "redact" },
+    { "category": "prompt_injection_attempt", "action": "review" },
+    { "category": "public_package_name", "action": "keep" },
+    { "category": "ambiguous",           "action": "review" }
+  ],
+  "review_threshold": "low",
+  "allowlist": {
+    "domains": ["mycompany.com", "github.com", "docs.python.org"],
+    "packages": ["my-proprietary-sdk"],
+    "patterns": ["TICKET-[0-9]+"]
+  },
+  "verification": {
+    "max_fix_passes": 3,
+    "on_residual_finding": "block"
+  }
+}

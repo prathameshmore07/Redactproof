@@ -1,0 +1,27 @@
+{
+  "policy": "internal",
+  "version": 2,
+  "default_action": "keep",
+  "rules": [
+    { "category": "credential",          "action": "redact" },
+    { "category": "personal_identity",   "action": "pseudonymize" },
+    { "category": "customer_identity",   "action": "pseudonymize" },
+    { "category": "internal_hostname",   "action": "keep" },
+    { "category": "local_path_user",     "action": "keep" },
+    { "category": "face_or_avatar",      "action": "keep" },
+    { "category": "qr_or_barcode",       "action": "redact" },
+    { "category": "prompt_injection_attempt", "action": "review" },
+    { "category": "public_package_name", "action": "keep" },
+    { "category": "ambiguous",           "action": "review" }
+  ],
+  "review_threshold": "high",
+  "allowlist": {
+    "domains": ["github.com", "corp.internal"],
+    "packages": [],
+    "patterns": []
+  },
+  "verification": {
+    "max_fix_passes": 2,
+    "on_residual_finding": "flag"
+  }
+}

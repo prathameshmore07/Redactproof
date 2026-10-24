@@ -1,0 +1,7 @@
+- id: redactproof-check
+  name: redactproof-check
+  description: Scan staged screenshots for secret credentials, PII, and internal infrastructure leaks.
+  entry: redactproof check
+  language: python
+  types: [image]
+  args: ["--policy", "public"]
