@@ -46,8 +46,14 @@ def get_index():
 
 @app.get("/api/state")
 def get_state():
-    if not session_state["input_path"]:
-        raise HTTPException(status_code=400, detail="No session loaded")
+    if not session_state.get("input_path"):
+        return {
+            "loaded": False,
+            "policy": session_state.get("policy_name", "public"),
+            "models": "gemma-4",
+            "findings": [],
+            "dimensions": [0, 0],
+        }
 
     # Serialize findings
     serialized_findings = []
@@ -65,6 +71,7 @@ def get_state():
         })
 
     return {
+        "loaded": True,
         "filename": session_state["input_path"].name,
         "policy": session_state["policy_name"],
         "dimensions": [session_state["image"].width, session_state["image"].height],
@@ -72,6 +79,23 @@ def get_state():
         "stranger_before": session_state.get("stranger_before", []),
         "stranger_after": session_state.get("stranger_after", []),
     }
+
+class UploadPayload(BaseModel):
+    filename: str
+    image_base64: str
+    policy: str = "public"
+
+@app.post("/api/upload")
+def upload_image(payload: UploadPayload):
+    raw_bytes = base64.b64decode(payload.image_base64)
+    temp_dir = Path.home() / ".cache" / "redactproof"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = temp_dir / payload.filename
+    temp_path.write_bytes(raw_bytes)
+    load_and_process_session(temp_path, policy=payload.policy)
+    return get_state()
+
+
 
 @app.get("/api/image/original")
 def get_original_image():
@@ -140,7 +164,7 @@ def apply_decisions(payload: DecisionsBatch):
         "stranger_after": v_result.assessed_judgments.stranger_test_after,
     }
 
-def start_review_server(input_path: Path, policy: str = "public", port: int = 8000):
+def load_and_process_session(input_path: Path, policy: str = "public"):
     input_path = Path(input_path).resolve()
     loaded = load_and_validate_image(input_path)
     pipeline = RedactproofPipeline(policy_name=policy, include_plaintext_in_report=True)
@@ -173,8 +197,15 @@ def start_review_server(input_path: Path, policy: str = "public", port: int = 80
     session_state["findings"] = final_findings
     session_state["pipeline"] = pipeline
     session_state["stranger_before"] = stranger_before
+    session_state["sanitized_path"] = None
+
+def start_review_server(input_path: Optional[Path] = None, policy: str = "public", port: int = 8000):
+    session_state["policy_name"] = policy
+    if input_path:
+        load_and_process_session(input_path, policy=policy)
 
     # Mount static files last so API routes take priority
     app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+

@@ -45,8 +45,21 @@
         <button id="btn-redo" class="toolbar-btn" title="Redo (Cmd+Shift+Z)">
           <svg viewBox="0 0 16 16"><path d="M12 7H5a3 3 0 0 0 0 6h2"/><polyline points="9 4 12 7 9 10"/></svg>
         </button>
+        <div class="toolbar-sep"></div>
+        <button id="btn-open-file" class="toolbar-btn text-btn" title="Open / Upload screenshot to redact">
+          <svg viewBox="0 0 16 16"><path d="M2 4a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4z"/></svg>
+          <span>Open Image</span>
+        </button>
+        <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/heic" style="display:none">
       </div>
-      <div class="canvas-viewport">
+      <div class="canvas-viewport" id="canvas-viewport">
+        <div id="drop-zone" class="drop-zone" style="display:none">
+          <div class="drop-zone-content">
+            <svg viewBox="0 0 24 24" class="drop-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div class="drop-title">Drop screenshot here to redact</div>
+            <div class="drop-subtitle">or click Open Image to select a file</div>
+          </div>
+        </div>
         <div class="canvas-container">
           <img id="canvas-img" alt="Screenshot under review" draggable="false">
           <div id="mask-layer"></div>

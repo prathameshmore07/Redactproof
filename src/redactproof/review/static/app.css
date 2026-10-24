@@ -164,12 +164,79 @@ html, body {
   fill: none;
 }
 
+.toolbar-btn.text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: var(--raised);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.toolbar-btn.text-btn:hover {
+  background: var(--border-hi);
+  color: #fff;
+}
+
+.drop-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(11, 12, 14, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  border: 2px dashed var(--border-hi);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.drop-zone.active {
+  border-color: var(--focus);
+  background: rgba(24, 26, 30, 0.98);
+}
+
+.drop-zone-content {
+  text-align: center;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.drop-icon {
+  width: 48px;
+  height: 48px;
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+  fill: none;
+  margin-bottom: 12px;
+}
+
+.drop-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.drop-subtitle {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 .canvas-viewport {
   flex: 1;
   overflow: auto;
   position: relative;
   cursor: crosshair;
 }
+
 
 .canvas-container {
   position: relative;

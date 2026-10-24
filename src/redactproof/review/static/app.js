@@ -37,61 +37,117 @@ const countKeep = $(".count-keep");
 const topStatus = $(".topbar-right");
 const topPolicy = $("#policy-name");
 const topModel = $("#model-name");
+const dropZone = $("#drop-zone");
+const btnOpenFile = $("#btn-open-file");
+const fileInput = $("#file-input");
 
 // --- Init ---
 async function init() {
+  bindEvents();
   try {
     const res = await fetch("/api/state");
     if (!res.ok) throw new Error("Failed to load state");
     const data = await res.json();
-
-    state.findings = data.findings.map((f, i) => ({
-      ...f,
-      _action: f.action, // mutable working copy
-      _resolved: f.action !== "review",
-    }));
-    state.imageW = data.dimensions[0];
-    state.imageH = data.dimensions[1];
-
-    topPolicy.textContent = data.policy;
-    topModel.textContent = data.models || "gemma-4";
-    topStatus.textContent = data.findings.length + " regions detected";
-
-    canvasImg.width = state.imageW;
-    canvasImg.height = state.imageH;
-
-    const onImgReady = () => {
-      zoomFit();
-      renderOverlays();
-    };
-
-    if (canvasImg.complete && canvasImg.naturalWidth > 0) {
-      onImgReady();
-    } else {
-      canvasImg.onload = onImgReady;
-    }
-    canvasImg.src = "/api/image/original";
-
-    renderFindings();
-    updateCounts();
-    btnOriginal.classList.toggle("active", state.view === "original");
-    btnPreview.classList.toggle("active", state.view === "preview");
-
-    if (initialUrlParams.has("select") && state.findings.length > 0) {
-      const selIdx = parseInt(initialUrlParams.get("select"), 10) || 0;
-      if (state.findings[selIdx]) {
-        selectFinding(state.findings[selIdx].region_id);
-      }
-    }
-
-    bindEvents();
-
-
+    loadStateData(data);
   } catch (e) {
+    if (dropZone) dropZone.style.display = "flex";
     findingsList.innerHTML =
-      '<div class="state-message">Could not load session. Ensure the review server is running.</div>';
+      '<div class="state-message">No image loaded. Drop a screenshot to inspect and redact.</div>';
   }
 }
+
+function loadStateData(data) {
+  if (!data.loaded) {
+    if (dropZone) dropZone.style.display = "flex";
+    topStatus.textContent = "Ready. Drop a screenshot or open an image.";
+    findingsList.innerHTML =
+      '<div class="state-message">No image loaded. Drop a screenshot to inspect and redact.</div>';
+    return;
+  }
+
+  if (dropZone) dropZone.style.display = "none";
+  state.filename = data.filename;
+  state.findings = data.findings.map((f) => ({
+    ...f,
+    _action: f.action,
+    _resolved: f.action !== "review",
+  }));
+  state.imageW = data.dimensions[0];
+  state.imageH = data.dimensions[1];
+
+  topPolicy.textContent = data.policy;
+  topModel.textContent = data.models || "gemma-4";
+  topStatus.textContent = data.findings.length + " regions detected";
+
+  canvasImg.width = state.imageW;
+  canvasImg.height = state.imageH;
+
+  const onImgReady = () => {
+    zoomFit();
+    renderOverlays();
+  };
+
+  if (canvasImg.complete && canvasImg.naturalWidth > 0) {
+    onImgReady();
+  } else {
+    canvasImg.onload = onImgReady;
+  }
+  canvasImg.src = "/api/image/original?" + Date.now();
+
+  renderFindings();
+  updateCounts();
+  btnOriginal.classList.toggle("active", state.view === "original");
+  btnPreview.classList.toggle("active", state.view === "preview");
+
+  if (initialUrlParams.has("select") && state.findings.length > 0) {
+    const selIdx = parseInt(initialUrlParams.get("select"), 10) || 0;
+    if (state.findings[selIdx]) {
+      selectFinding(state.findings[selIdx].region_id);
+    }
+  }
+}
+
+async function uploadFile(file) {
+  if (!file) return;
+  topStatus.textContent = "Scanning screenshot with Apple Vision & detectors...";
+  if (dropZone) {
+    dropZone.style.display = "flex";
+    const title = dropZone.querySelector(".drop-title");
+    const sub = dropZone.querySelector(".drop-subtitle");
+    if (title) title.textContent = "Scanning screenshot...";
+    if (sub) sub.textContent = file.name;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const base64Data = reader.result.split(",")[1];
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          image_base64: base64Data,
+          policy: topPolicy.textContent || "public",
+        }),
+      });
+      if (!res.ok) throw new Error("Upload processing failed");
+      const data = await res.json();
+      loadStateData(data);
+    } catch (err) {
+      topStatus.textContent = "Upload failed: " + err.message;
+      if (dropZone) {
+        const title = dropZone.querySelector(".drop-title");
+        const sub = dropZone.querySelector(".drop-subtitle");
+        if (title) title.textContent = "Drop screenshot here to redact";
+        if (sub) sub.textContent = "or click Open Image to select a file";
+      }
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+
 
 // --- Render findings list ---
 function renderFindings() {
@@ -395,6 +451,14 @@ async function doExport() {
     btnExport.textContent = "Exported";
     topStatus.textContent = "Sanitized image written. Verification complete.";
 
+    // Trigger direct browser download of the sanitized image
+    const a = document.createElement("a");
+    a.href = "/api/image/sanitized?" + Date.now();
+    a.download = (state.filename ? state.filename.replace(/\.[^/.]+$/, "") : "screenshot") + ".sanitized.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
     // Switch to preview
     setView("preview");
     canvasImg.src = "/api/image/sanitized?" + Date.now();
@@ -419,7 +483,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// --- Keyboard ---
+// --- Keyboard & Event Bindings ---
 function bindEvents() {
   btnOriginal.addEventListener("click", () => setView("original"));
   btnPreview.addEventListener("click", () => setView("preview"));
@@ -429,6 +493,42 @@ function bindEvents() {
   btnUndo.addEventListener("click", undo);
   btnRedo.addEventListener("click", redo);
   btnExport.addEventListener("click", doExport);
+
+  if (btnOpenFile && fileInput) {
+    btnOpenFile.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) {
+        uploadFile(e.target.files[0]);
+      }
+    });
+  }
+
+  // Drag and drop anywhere on window
+  window.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (dropZone) {
+      dropZone.style.display = "flex";
+      dropZone.classList.add("active");
+    }
+  });
+
+  window.addEventListener("dragleave", (e) => {
+    if (e.relatedTarget === null && dropZone) {
+      dropZone.classList.remove("active");
+      if (state.imageW > 0) dropZone.style.display = "none";
+    }
+  });
+
+  window.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (dropZone) dropZone.classList.remove("active");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+      uploadFile(e.dataTransfer.files[0]);
+    } else if (state.imageW > 0 && dropZone) {
+      dropZone.style.display = "none";
+    }
+  });
+
 
   window.addEventListener("resize", () => {
     renderOverlays();

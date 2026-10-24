@@ -169,7 +169,7 @@ def check(
 
 @app.command()
 def review(
-    input_file: Path = typer.Argument(..., help="Path to screenshot to review"),
+    input_file: Optional[Path] = typer.Argument(None, help="Path to screenshot to review (optional, or upload directly in the UI)"),
     port: int = typer.Option(8000, "--port", "-P", help="Port for local review server"),
     policy: str = typer.Option("public", "--policy", "-p", help="Initial destination policy"),
 ):
