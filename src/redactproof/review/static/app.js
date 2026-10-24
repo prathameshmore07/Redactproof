@@ -128,7 +128,7 @@ async function uploadFile(file) {
         body: JSON.stringify({
           filename: file.name,
           image_base64: base64Data,
-          policy: topPolicy.textContent || "public",
+          policy: (topPolicy.textContent && topPolicy.textContent !== "--") ? topPolicy.textContent : "public",
         }),
       });
       if (!res.ok) throw new Error("Upload processing failed");

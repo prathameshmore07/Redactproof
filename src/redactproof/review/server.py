@@ -92,8 +92,11 @@ def upload_image(payload: UploadPayload):
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_path = temp_dir / payload.filename
     temp_path.write_bytes(raw_bytes)
-    load_and_process_session(temp_path, policy=payload.policy)
+
+    policy = payload.policy if (payload.policy and payload.policy != "--") else (session_state.get("policy_name") or "public")
+    load_and_process_session(temp_path, policy=policy)
     return get_state()
+
 
 
 
@@ -165,6 +168,8 @@ def apply_decisions(payload: DecisionsBatch):
     }
 
 def load_and_process_session(input_path: Path, policy: str = "public"):
+    if not policy or policy == "--":
+        policy = "public"
     input_path = Path(input_path).resolve()
     loaded = load_and_validate_image(input_path)
     pipeline = RedactproofPipeline(policy_name=policy, include_plaintext_in_report=True)
