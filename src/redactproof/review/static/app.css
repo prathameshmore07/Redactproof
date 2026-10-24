@@ -184,28 +184,43 @@ html, body {
   -webkit-user-drag: none;
 }
 
+#mask-layer, #overlay-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+
 /* Box overlays */
 .box-overlay {
   position: absolute;
   border: 2px solid var(--redact);
-  background: rgba(229, 72, 77, 0.12);
+  background: rgba(229, 72, 77, 0.20);
   cursor: pointer;
+  pointer-events: auto;
+  border-radius: 2px;
+  box-sizing: border-box;
   transition: border-color 120ms ease, background 120ms ease;
 }
 
 .box-overlay[data-action="review"] {
   border-color: var(--review);
-  background: rgba(245, 165, 36, 0.12);
+  background: rgba(245, 165, 36, 0.20);
 }
 
 .box-overlay[data-action="keep"] {
   border-color: var(--keep);
-  background: rgba(61, 214, 140, 0.12);
+  background: rgba(61, 214, 140, 0.20);
 }
 
 .box-overlay.selected {
   border-width: 2px;
   border-style: solid;
+  border-color: var(--focus);
+  background: rgba(124, 156, 255, 0.25);
   z-index: 10;
 }
 
@@ -233,8 +248,14 @@ html, body {
 /* Mask preview */
 .mask-rect {
   position: absolute;
-  background: #0F0F11;
+  background: #000000;
+  border: 1px solid #1E2024;
+  border-radius: 2px;
+  box-sizing: border-box;
+  z-index: 5;
 }
+
+
 
 /* --- Right panel --- */
 .panel {

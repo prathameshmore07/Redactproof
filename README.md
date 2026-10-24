@@ -128,13 +128,14 @@ Redactproof provides a local single-page review interface built with vanilla HTM
 
 Inspect detected sensitive regions, view category and confidence scores, and approve or reject actions:
 
-![Redactproof Review Interface](docs/screenshots/review_ui_original.jpg)
+![Redactproof Review Interface](docs/screenshots/review_ui_original.png)
 
 ### Masked preview mode
 
 Toggle to preview mode (or press Space) to inspect solid opaque masks before exporting:
 
-![Redactproof Preview Mode](docs/screenshots/review_ui_preview.jpg)
+![Redactproof Preview Mode](docs/screenshots/review_ui_preview.png)
+
 
 ## Quickstart
 

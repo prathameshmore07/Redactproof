@@ -1,16 +1,18 @@
 "use strict";
 
 // --- State ---
+const initialUrlParams = new URLSearchParams(window.location.search);
 const state = {
   findings: [],
   selectedId: null,
-  view: "original", // "original" | "preview"
+  view: initialUrlParams.get("view") === "preview" ? "preview" : "original",
   zoom: 1,
   imageW: 0,
   imageH: 0,
   undoStack: [],
   redoStack: [],
 };
+
 
 // --- DOM refs ---
 const $ = (s) => document.querySelector(s);
@@ -55,15 +57,36 @@ async function init() {
     topModel.textContent = data.models || "gemma-4";
     topStatus.textContent = data.findings.length + " regions detected";
 
-    canvasImg.onload = () => {
+    canvasImg.width = state.imageW;
+    canvasImg.height = state.imageH;
+
+    const onImgReady = () => {
       zoomFit();
       renderOverlays();
     };
+
+    if (canvasImg.complete && canvasImg.naturalWidth > 0) {
+      onImgReady();
+    } else {
+      canvasImg.onload = onImgReady;
+    }
     canvasImg.src = "/api/image/original";
 
     renderFindings();
     updateCounts();
+    btnOriginal.classList.toggle("active", state.view === "original");
+    btnPreview.classList.toggle("active", state.view === "preview");
+
+    if (initialUrlParams.has("select") && state.findings.length > 0) {
+      const selIdx = parseInt(initialUrlParams.get("select"), 10) || 0;
+      if (state.findings[selIdx]) {
+        selectFinding(state.findings[selIdx].region_id);
+      }
+    }
+
     bindEvents();
+
+
   } catch (e) {
     findingsList.innerHTML =
       '<div class="state-message">Could not load session. Ensure the review server is running.</div>';
@@ -269,11 +292,13 @@ function renderOverlays() {
   overlayLayer.innerHTML = "";
   maskLayer.innerHTML = "";
 
-  if (!state.imageW) return;
+  if (!state.imageW || !state.imageH) return;
 
   const img = canvasImg;
-  const scaleX = img.clientWidth / state.imageW;
-  const scaleY = img.clientHeight / state.imageH;
+  const currentW = img.clientWidth > 0 ? img.clientWidth : state.imageW;
+  const currentH = img.clientHeight > 0 ? img.clientHeight : state.imageH;
+  const scaleX = currentW / state.imageW;
+  const scaleY = currentH / state.imageH;
 
   for (const f of state.findings) {
     if (state.view === "preview" && (f._action === "redact" || f._action === "pseudonymize")) {
@@ -304,18 +329,20 @@ function renderOverlays() {
 
 // --- Zoom ---
 function setZoom(z) {
-  state.zoom = Math.max(0.25, Math.min(4, z));
+  state.zoom = Math.max(0.2, Math.min(4, z));
   canvasContainer.style.transform = `scale(${state.zoom})`;
 }
 
 function zoomFit() {
   const viewport = $(".canvas-viewport");
-  if (!viewport || !state.imageW) return;
-  const vw = viewport.clientWidth - 24;
-  const vh = viewport.clientHeight - 24;
+  if (!viewport || !state.imageW || !state.imageH) return;
+  const vw = viewport.clientWidth - 48;
+  const vh = viewport.clientHeight - 48;
+  if (vw <= 0 || vh <= 0) return;
   const fit = Math.min(vw / state.imageW, vh / state.imageH, 1);
-  setZoom(fit);
+  setZoom(Math.max(0.2, fit));
 }
+
 
 // --- Counts ---
 function updateCounts() {
