@@ -11,7 +11,6 @@ from rich import box
 from .pipeline import RedactproofPipeline
 from .config import settings
 from .input_loader import load_and_validate_image
-from .gemma.injection_guard import PromptInjectionGuard
 
 app = typer.Typer(
     name="redactproof",
@@ -124,50 +123,6 @@ def sanitize(
     sys.exit(result.exit_code)
 
 @app.command()
-def check(
-    input_file: Path = typer.Argument(..., help="Path to input screenshot to check"),
-    policy: str = typer.Option("public", "--policy", "-p", help="Destination policy to enforce"),
-    runtime: str = typer.Option("auto", "--runtime", help="Model runtime: auto, ollama, or mock"),
-):
-    """Developer-native pre-commit / CI check mode. Exits with code 1 if sensitive content is found."""
-    try:
-        pipeline = RedactproofPipeline(
-            policy_name=policy,
-            gemma_runtime=runtime,
-            strict_mode=True,
-        )
-    except Exception as e:
-        console.print(f"[bold red]Initialization Error:[/bold red] {e}")
-        raise typer.Exit(code=1)
-
-    with console.status("[bold cyan]Scanning screenshot for policy violations...", spinner="dots"):
-        # Load and run perception + policy without saving output
-        loaded = load_and_validate_image(input_file)
-        text_items = pipeline.ocr_primary.extract_text(loaded.image)
-        faces = pipeline.face_detector.detect_faces(loaded.image)
-        codes = pipeline.code_detector.detect_codes(loaded.image)
-        salt = "redactproof-check"
-        detectors_findings = pipeline.detectors.detect_all(
-            items=text_items,
-            allowlist_domains=pipeline.policy.allowlist.domains,
-            salt=salt,
-        )
-        injections = PromptInjectionGuard.inspect_text_items(text_items)
-        all_det = faces + codes + detectors_findings + injections
-        gemma_finds, _ = pipeline.gemma.review_ambiguous_and_relational(text_items, policy)
-        final_findings = pipeline.policy_engine.apply_policy(all_det, gemma_finds)
-
-    violations = [f for f in final_findings if f.action.value in ("redact", "review")]
-    if violations:
-        console.print(f"[bold red]FAILED:[/bold red] Screenshot '{input_file.name}' contains {len(violations)} policy violations under '{policy}' policy:")
-        for v in violations:
-            console.print(f"  • [{v.category.value}] {v.rationale} (Action: {v.action.value})")
-        raise typer.Exit(code=1)
-    else:
-        console.print(f"[bold green]PASSED:[/bold green] Screenshot '{input_file.name}' is clean under '{policy}' policy.")
-        raise typer.Exit(code=0)
-
-@app.command()
 def review(
     input_file: Optional[Path] = typer.Argument(None, help="Path to screenshot to review (optional, or upload directly in the UI)"),
     port: int = typer.Option(8000, "--port", "-P", help="Port for local review server"),
@@ -179,17 +134,20 @@ def review(
     start_review_server(input_file, policy=policy, port=port)
 
 @app.command()
-def bench(
-    samples: int = typer.Option(10, "--samples", "-n", help="Number of benchmark screenshots to generate and evaluate"),
+def ui(
+    port: int = typer.Option(8501, "--port", "-p", help="Port for Streamlit UI"),
 ):
+    """Launch the interactive Redactproof Streamlit Studio."""
+    import os
+    import subprocess
     import sys
-    from pathlib import Path
-    workspace_root = Path.cwd()
-    if str(workspace_root) not in sys.path:
-        sys.path.insert(0, str(workspace_root))
-    from bench.runners.benchmark_suite import run_redactbench
-    console.print(f"[bold cyan]Launching RedactBench ({samples} synthetic samples)...[/bold cyan]")
-    run_redactbench(sample_count=samples)
+    app_path = Path(__file__).resolve().parent / "streamlit_app" / "app.py"
+    src_dir = str(Path(__file__).resolve().parent.parent)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{src_dir}:{env.get('PYTHONPATH', '')}"
+    console.print(f"[bold green]🚀 Launching Redactproof Streamlit Studio on port {port}...[/bold green]")
+    cmd = [sys.executable, "-m", "streamlit", "run", str(app_path), "--server.port", str(port)]
+    subprocess.run(cmd, env=env)
 
 if __name__ == "__main__":
     app()

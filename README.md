@@ -120,19 +120,49 @@ graph LR
 
 **Destination-aware policies.** The same screenshot may be fine internally and dangerous publicly. Policies (`public`, `internal`, `support`, or custom JSON) define what action applies to each category of finding. The policy version and SHA-256 hash are recorded on every run.
 
-## Review interface
+## Interfaces
 
-Redactproof provides a local single-page review interface built with vanilla HTML, CSS, and JS (zero build steps, zero external CDNs, zero remote calls).
+Redactproof provides two visual interfaces depending on your workflow: the **Redactproof Streamlit Studio** for interactive multi-format document sanitization with animated before/after comparisons, and a lightweight **FastAPI Review Interface** for fast single-image audits.
 
-### Inspection and box review
+---
 
-Inspect detected sensitive regions, view category and confidence scores, and approve or reject actions:
+### 1. Redactproof Studio (Streamlit)
+
+A local desktop studio designed for universal document sanitization, smart PII suggestions, custom user-defined term masking, and interactive visual verification.
+
+![Redactproof Studio](docs/screenshots/streamlit_studio.png)
+
+#### Core Studio Capabilities:
+- **Universal Multi-Format Ingestion**: Upload multi-page **PDFs** (rendered at 150 DPI), **Images** (`PNG`, `JPEG`, `WEBP`, `BMP`, `TIFF`), raw **Log & Source Code Files** (`.txt`, `.log`, `.json`, `.py`, `.env`, `.yaml`, `.xml`), or paste text snippets directly into the studio.
+- **Custom User-Defined Redactions**: Type specific words, company secrets, employee names, or custom regular expressions (e.g. `sk-[a-zA-Z0-9]+`, `\b\d{10}\b`) with live regex validation and case-sensitivity controls.
+- **Smart Category-Based Auto-Suggestions**: Automatically detects and groups sensitive entities into clear categories:
+  - 🔑 **Credentials & Secrets**: API tokens, AWS keys, Stripe secrets, private keys, password strings.
+  - 👤 **Personal Identifiers (PII)**: Emails, phone numbers, usernames, credit cards.
+  - 🌐 **Infrastructure & Paths**: Internal hostnames (`.internal`, `.corp`), private IPs, local file paths (`/Users/...`, `/home/...`).
+  - 🔍 **Stranger Inferences**: Relational disclosures flagged by the local Gemma model.
+- **Batch Actions**: One-click selection for *"Select All Recommended"*, *"High & Critical Only"*, or *"Clear All Selections"*.
+
+---
+
+#### Interactive Before & After Visual Comparison (With Animation)
+
+Inspect all sanitization changes with an interactive comparison visualizer:
+
+![Interactive Before and After Slider](docs/screenshots/before_after_slider.png)
+
+- **Draggable Neon Split Reveal Slider**: Drag the glowing neon divider left/right with mouse or touch to reveal unredacted before vs sanitized after.
+- **Auto-Pulse Breathing Animation**: Toggle auto-pulse crossfade for a smooth breathing transition between original and sanitized states.
+- **SVG Bounding Box Inspection Overlay**: Highlights detected bounding boxes with category pills, plaintext previews, and detector metadata.
+- **Side-by-Side Dual View**: Full-resolution side-by-side comparison for multi-monitor inspection.
+- **Audit Proof & Downloads**: Export sanitized single images (PNG), reconstructed multi-page sanitized PDFs, sanitized code/text files, and cryptographic JSON audit reports.
+
+---
+
+### 2. Lightweight Review Interface (FastAPI)
+
+Single-page review interface built with vanilla HTML, CSS, and JS (zero external CDNs, zero remote calls):
 
 ![Redactproof Review Interface](docs/screenshots/review_ui_original.png)
-
-### Masked preview mode
-
-Toggle to preview mode (or press Space) to inspect solid opaque masks before exporting:
 
 ![Redactproof Preview Mode](docs/screenshots/review_ui_preview.png)
 
@@ -147,16 +177,14 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Ensure Ollama is running with Gemma 4
-ollama pull gemma4:e2b
+# Launch the interactive Redactproof Streamlit Studio
+redactproof ui --port 8501
+# Or directly: streamlit run app.py
 
-# Sanitize a screenshot
+# Sanitize an image or document via CLI
 redactproof sanitize screenshot.png --policy public --output clean.png --report audit.json
 
-# Check mode (CI / pre-commit, exit code 1 on findings)
-redactproof check screenshot.png --policy public
-
-# Launch review UI
+# Launch the lightweight FastAPI review UI
 redactproof review screenshot.png --policy public --port 8000
 ```
 
@@ -221,7 +249,6 @@ redactproof sanitize screenshot.png --policy public
 For headless CI environments, pre-commit hooks, or offline testing without Ollama:
 ```bash
 redactproof sanitize screenshot.png --policy public --runtime mock
-redactproof check screenshot.png --policy public --runtime mock
 ```
 The mock runtime provides deterministic, fast heuristic responses matching Gemma 4 schema specifications without requiring local GPU or model weights.
 
@@ -235,10 +262,12 @@ redactproof/
   LICENSE                           Apache-2.0
   project.md                       Full specification
   src/redactproof/
-    cli.py                          Typer CLI: sanitize, check, review, bench
+    cli.py                          Typer CLI: sanitize, review, ui
     config.py                       Settings and paths
     schemas.py                      Pydantic data models
     input_loader.py                 Image validation and loading
+    multi_format.py                 Universal multi-format loader (PDF, image, text, logs)
+    custom_rules.py                 Custom keywords, phrases, regex matcher
     pipeline.py                     End-to-end orchestration
     perception/                     OCR (Apple Vision), face, QR/barcode detection
     detectors/                      Regex, entropy, Luhn, IP, URL, local paths
@@ -249,10 +278,10 @@ redactproof/
     verify/                         Pixel checks, re-OCR, Gemma adversary, loop
     audit/                          Structured JSON report generator
     review/                         FastAPI server + static review UI
+    streamlit_app/                  Interactive Streamlit Studio & Before/After slider
+  app.py                            Streamlit application root entrypoint
   hooks/                            Pre-commit hook, GitHub Action example
   policies/examples/                Custom policy templates
-  bench/                            RedactBench synthetic generator and baselines
-  tests/                            Unit, integration, security tests
 ```
 
 ## CLI commands
@@ -260,9 +289,8 @@ redactproof/
 | Command | Purpose | Exit codes |
 |---|---|---|
 | `redactproof sanitize <file>` | Full pipeline: detect, redact, verify, report | 0 success, 2 review blocked, 3 residual risk |
-| `redactproof check <file>` | Scan-only mode for CI and pre-commit hooks | 0 clean, 1 findings detected |
-| `redactproof review <file>` | Local web UI for inspecting and approving redactions | -- |
-| `redactproof bench` | Run RedactBench evaluation across 5 baselines | -- |
+| `redactproof review <file>` | Lightweight local FastAPI review UI | -- |
+| `redactproof ui` | Launch the full interactive Streamlit Studio with animated Before/After slider | -- |
 
 ## Destination policies
 
@@ -293,11 +321,12 @@ Every run produces a JSON report containing:
 | CLI | Typer + Rich |
 | Primary OCR | Apple Vision via PyObjC |
 | Verifier OCR | Apple Vision (fast mode, contrast-enhanced) or Tesseract |
-| Image processing | Pillow, NumPy |
-| Local model | Gemma 4 E2B/E4B via Ollama |
+| Image Processing | Pillow, NumPy |
+| Document & PDF Engine | PyMuPDF (fitz) |
+| Studio UI | Streamlit + Custom Glassmorphic CSS/JS |
+| Local Model | Gemma 4 E2B/E4B via Ollama |
 | Schemas | Pydantic v2 |
 | Review UI | FastAPI + vanilla HTML/CSS/JS |
-| Testing | pytest |
 
 ## Limitations
 
